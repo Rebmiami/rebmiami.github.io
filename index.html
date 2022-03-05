@@ -1,6 +1,27 @@
 
 <!DOCTYPE html>
 <style>
+.box {
+	padding: 25px;
+	height: 150px;
+	border: 1px solid black;
+}
+
+.aside {
+  height: inherit;
+  float: right;
+  font-style: italic;
+  background-color: lightgray;
+}
+
+/* Images */
+.img {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+  height: inherit;
+}
+
 /* Style the tab */
 .tab {
   overflow: hidden;
@@ -42,52 +63,99 @@
 <html>
 <body>
 <h1 style="text-align: center">Rebmiami&#39;s Creations</h1>
-    <div class="tab">
-  <button class="tablinks" onclick="openCity(event, 'London')">London</button>
-  <button class="tablinks" onclick="openCity(event, 'Paris')">Paris</button>
-  <button class="tablinks" onclick="openCity(event, 'Tokyo')">Tokyo</button>
-  <button class="tablinks" onclick="openCity(event, 'Berlin')">Berlin</button>
+	<div class="tab">
+  <button class="tablinks" onclick="openTab(event, 'Gamedev')" id="defaultOpen">Gamedev</button>
+  <button class="tablinks" onclick="openTab(event, 'Music')">Music</button>
+  <button class="tablinks" onclick="openTab(event, 'VST')">VST</button>
+  <button class="tablinks" onclick="openTab(event, 'Other')">Other</button>
 </div>
 
 <!-- Tab content -->
-<div id="London" class="tabcontent">
-  <h3>London</h3>
-  <p>London is the capital city of England.</p>
+<div id="Gamedev" class="tabcontent">
+  <h3>Gamedev</h3>
+  <p>I'm a member of the small development studio Silk Rock! We have yet to publish any games, but we have some projects in the work.</p>
+  <p><a href="https://github.com/Silk-Rock">Silk Rock on Github</a> | <a href="https://northernite.github.io">Silk Rock on Github Pages (Website, WIP)</a></p>
+	<hr />
+  <p>I have published several games independently:</p>
+	<div class="box">
+		<aside class="aside">
+			<img class="img" src="img/GC_Imaginosia.png" alt="Imaginosia Gameplay">
+		</aside>
+		<article>
+			<a href="https://rebmiami.itch.io/imaginosia">Imaginosia</a> is a top-down survival game for Windows created in a single week for the <a href="https://itch.io/jam/brackeys-7">2022.1 Brackeys Game Jam</a>.
+			<p><a href="https://rebmiami.itch.io/imaginosia">Download from Itch.io</a> | <a href="https://github.com/Rebmiami/Imaginosia">View source code on GitHub</a></p>
+		</article>
+	</div>
+	<div class="box">
+		<aside class="aside">
+			<img class="img" src="img/GC_Brickspite.png" alt="BrickSpite Gameplay">
+		</aside>
+		<article>
+			<a href="https://rebmiami.itch.io/brickspite">BrickSpite</a> is a brick-breaker game for Windows and the first game I have ever published.
+			<p><a href="https://rebmiami.itch.io/brickspite">Download from Itch.io</a></p>
+		</article>
+	</div>
 </div>
 
-<div id="Paris" class="tabcontent">
-  <h3>Paris</h3>
-  <p>Paris is the capital of France.</p>
+<div id="Music" class="tabcontent">
+  <h3>Music</h3>
+  <p>My music can be found on YouTube, Soundcloud, Bandcamp, or BandLab.</p>
+	<hr />
+	<h4>ALBUMS</h4>
+	<p>Nothing here yet.</p>
+	<hr />
+	<h4>SINGLES</h4>
+	<div class="box">
+		<aside class="aside">
+			<img class="img" src="img/AC_Axolotls.png" alt="Imaginosia Gameplay">
+		</aside>
+		<p>"Axolotls" is the first song I have ever released.</p>
+		<p><a href="https://youtu.be/JzZlCgJYuVY">Listen on YouTube</a> | <a href="https://www.bandlab.com/rebmiami/axolotls-0f7f5264">Listen on BandLab</a></p>
+	</div>
+	
+	<hr />
+	<h4>SOUNDTRACKS</h4>
+	<div class="box">
+		<aside class="aside">
+			<img class="img" src="img/AC_Brickspite.png" alt="Imaginosia Gameplay">
+		</aside>
+		<p>I composed the original soundtrack for BrickSpite, containing 1 song "BrickSpite".</p>
+		<p>1. "BrickSpite" - <a href="https://youtu.be/pr3XRMppjHc">Listen on YouTube</a> | <a href="https://soundcloud.com/rebmiami/brickspite">Listen on Soundcloud</a> | <a href="https://rebmiami.bandcamp.com/track/brickspite">Listen on Bandcamp</a></p>
+	</div>
 </div>
 
-<div id="Tokyo" class="tabcontent">
-  <h3>Tokyo</h3>
-  <p>Tokyo is the capital of Japan.</p>
+<div id="VST" class="tabcontent">
+  <h3>VST</h3>
+  <p>Nothing here yet.</p>
 </div>
 
-<div id="Berlin" class="tabcontent">
-  <h3>Berlin</h3>
-  <p>Berlin is the capital of Germany.</p>
+<div id="Other" class="tabcontent">
+  <h3>Other</h3>
+  <p>Nothing here yet.</p>
 </div>
 </body>
 </html>
-<script>function openCity(evt, cityName) {
+<script>
+	function openTab(evt, cityName) {
   // Declare all variables
   var i, tabcontent, tablinks;
 
   // Get all elements with class="tabcontent" and hide them
   tabcontent = document.getElementsByClassName("tabcontent");
   for (i = 0; i < tabcontent.length; i++) {
-    tabcontent[i].style.display = "none";
+	tabcontent[i].style.display = "none";
   }
 
   // Get all elements with class="tablinks" and remove the class "active"
   tablinks = document.getElementsByClassName("tablinks");
   for (i = 0; i < tablinks.length; i++) {
-    tablinks[i].className = tablinks[i].className.replace(" active", "");
+	tablinks[i].className = tablinks[i].className.replace(" active", "");
   }
 
   // Show the current tab, and add an "active" class to the button that opened the tab
   document.getElementById(cityName).style.display = "block";
   evt.currentTarget.className += " active";
-}</script>
+	}
+	document.getElementById("defaultOpen").click();
+
+</script>
