@@ -3,7 +3,7 @@
 <style>
 .box {
 	padding: 25px;
-	height: 150px;
+	min-height: 150px;
 	border: 1px solid black;
 }
 
@@ -19,7 +19,7 @@
   overflow: hidden;
   border: 1px solid #ccc;
   background-color: #f1f1f1;
-  height: inherit;
+  height: 150px;
 }
 
 /* Style the tab */
@@ -72,7 +72,30 @@
 
 .miniaudio {
 	width: stretch;
-	height: stretch;
+	height: 30px;
+}
+
+.collapsible {
+  background-color: #777;
+  color: white;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+}
+
+.active, .collapsible:hover {
+  background-color: #555;
+}
+
+.content {
+  padding: 0 18px;
+  display: none;
+  overflow: hidden;
+  background-color: #7777;
 }
 
 body {
@@ -181,7 +204,121 @@ a {
   <p>Unless stated otherwise, all of my music is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/"><abbr title="You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use. If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original. You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.">CC-BY-SA 4.0</abbr></a> and MP3/OGG/WAV download links can be found for each song. You may use the music for any purpose as long as the license is followed.</p>
 	<hr />
 	<h4>ALBUMS</h4>
-	<p>My album "Grayboard" will be released for free on 3/19/2022 on YouTube, SoundCloud, Bandcamp, and BandLab.</p>
+	<div class="box">
+		<aside class="aside">
+			<img class="img" src="img/AC_Grayboard.png">
+		</aside>
+		<p>"Grayboard" is an electronic album featuring a variety of styles, from bright and optimistic to fast and chaotic, with a general inspiration from classic video game music. In the works since October 2021, it is the first album I have ever published. It features 9 songs at a total of 34 minutes long.</p>
+		<p>
+			Full album - 
+			<a href="https://youtu.be/TBd0XYMkgeY">Listen on YouTube</a> | 
+			<a href="https://soundcloud.com/rebmiami/sets/grayboard/s-rPrZk7Be2kK?utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing">Listen on Soundcloud</a> | 
+			<a href="https://rebmiami.bandcamp.com/album/grayboard">Listen on Bandcamp</a> |
+			<a href="https://www.bandlab.com/rebmiami/albums/e3ce0d3e-522b-ec11-981f-0004ffd34262">Listen on BandLab</a>
+		</p>
+		<button type="button" class="collapsible">Show All Tracks</button>
+		<div class="content">
+			<p>
+				1. "Amplitune" - 
+				<a href="https://soundcloud.com/rebmiami/amplitune?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/amplitune">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Amplitune.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Amplitune.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Amplitune.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Amplitune.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				2. "Altomotion" - 
+				<a href="https://soundcloud.com/rebmiami/altomotion?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/altomotion">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Altomotion.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Altomotion.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Altomotion.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Altomotion.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				3. "Nexthorn" - 
+				<a href="https://soundcloud.com/rebmiami/nexthorn?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/nexthorn">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Nexthorn.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Nexthorn.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Nexthorn.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Nexthorn.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				4. "Interrobanger" - 
+				<a href="https://soundcloud.com/rebmiami/interrobanger?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/interrobanger">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Interrobanger.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Interrobanger.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Interrobanger.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Interrobanger.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				5. "Grayboard" - 
+				<a href="https://soundcloud.com/rebmiami/grayboard?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/grayboard">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Grayboard.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Grayboard.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Grayboard.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Grayboard.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				6. "Stalonosia" - 
+				<a href="https://soundcloud.com/rebmiami/stalonosia?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/stalonosia">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Stalonosia.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Stalonosia.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Stalonosia.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Stalonosia.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				7. "Rhainwires" - 
+				<a href="https://soundcloud.com/rebmiami/rhainwires?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/rhainwires">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Rhainwires.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Rhainwires.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Rhainwires.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Rhainwires.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				8. "Metasebrum" - 
+				<a href="https://soundcloud.com/rebmiami/metasebrum?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/metasebrum">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Metasebrum.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Metasebrum.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Metasebrum.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Metasebrum.wav" type="audio/wav">
+			</audio>
+			</p>
+			<p>
+				9. "Neonor" - 
+				<a href="https://soundcloud.com/rebmiami/neonor?in=rebmiami/sets/grayboard/">Soundcloud</a> | 
+				<a href="https://rebmiami.bandcamp.com/track/neonor">Bandcamp</a> |
+				<a href="./files/music/wav/Grayboard/Neonor.wav" download="">WAV</a> | 
+				<a href="./files/music/mp3/Grayboard/Neonor.mp3" download="">MP3</a> | 
+				<a href="./files/music/ogg/Grayboard/Neonor.ogg" download="">OGG</a>
+			<audio controls="" name="media" class="miniaudio">
+				<source src="./files/music/wav/Grayboard/Neonor.wav" type="audio/wav">
+			</audio>
+			</p>
+		</div>
+	</div>
 	<hr />
 	<h4>SINGLES</h4>
 	<div class="box">
@@ -255,5 +392,20 @@ a {
   evt.currentTarget.className += " active";
 	}
 	document.getElementById("defaultOpen").click();
+
+    var coll = document.getElementsByClassName("collapsible");
+    var j;
+
+    for (j = 0; j < coll.length; j++) {
+        coll[j].addEventListener("click", function () {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        });
+    }
 
 </script>

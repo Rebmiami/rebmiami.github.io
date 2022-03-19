@@ -1,8 +1,13 @@
 {
   "ExpandedNodes": [
     "",
+    "\\files",
+    "\\files\\music",
+    "\\files\\music\\mp3",
+    "\\files\\music\\ogg",
+    "\\files\\music\\wav",
     "\\img"
   ],
-  "SelectedNode": "\\index.html",
+  "SelectedNode": "\\files\\music\\mp3",
   "PreviewInSolutionExplorer": false
 }
