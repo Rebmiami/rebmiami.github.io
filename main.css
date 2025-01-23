@@ -4,24 +4,30 @@ body {
     height: 100vh;
     width: 100vw;
     background-color: black;
+
+    font-family: 'Roboto', sans-serif;
 }
 
 nav {
     padding: 15px;
-
-    outline: black 2px solid;
 }
 
 header {
     padding: 15px;
 
-    outline: black 2px solid;
+    font-family: 'Impact', sans-serif;
+    font-size: xx-large;
+    font-style: italic;
+    text-align: center;
 }
 
 main {
     padding: 15px;
+}
 
-    outline: black 2px solid;
+.newsline {
+    display: inline;
+    padding-right: 500px;
 }
 
 .spacebg {
