@@ -1,3 +1,8 @@
+@font-face {
+    font-family: 'Italianno';
+    src:  url('Italianno-Regular.ttf') format('truetype'),
+}
+
 body {
     position: relative;
     margin: 0;
@@ -13,6 +18,17 @@ nav {
 }
 
 header {
+    font-family: 'Italianno';
+    font-size: 72px;
+    font-style: italic;
+
+    color: white;
+
+    text-indent: 10%;
+    text-shadow: -2px 5px 2px black;
+}
+
+h1 {
     padding: 15px;
 
     font-family: 'Impact', sans-serif;
@@ -44,8 +60,8 @@ main {
     display: flex;
     flex-direction: row;
 
-    margin: 10%;
-    position: absolute;
+    margin-left: 10%;
+    margin-right: 10%;
 
     color: white;
     background-color: rgb(105, 105, 105);
