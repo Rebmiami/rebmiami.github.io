@@ -50,6 +50,7 @@ main {
     /* filter: blur(2px); */
     background-image: url(galaxy.webp);
     position: fixed;
+    top: 0;
     z-index: -1;
 
     width: 100%;
