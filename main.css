@@ -73,6 +73,10 @@ main {
     outline: black 2px solid;
 }
 
+.tv-screen {
+    background-color: black;
+}
+
 .col-1 {
     width: 20%;
 }
