@@ -72,3 +72,26 @@ main {
 
     outline: black 2px solid;
 }
+
+.col-1 {
+    width: 20%;
+}
+
+.col-2 {
+    width: 80%;
+}
+
+/* Change layout for mobile devices */
+@media only screen and (max-width: 768px) {
+    .displaybox {
+        flex-direction: column;   
+    }
+
+    .col-1 {
+        width: 100%;
+    }
+    
+    .col-2 {
+        width: 100%;
+    }
+}
