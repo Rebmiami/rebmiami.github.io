@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<head>
+	<title>The Slot Machine</title>
+</head>
+<body>
+	<script>
+		class main {
+			constructor() {
+				// Add results section
+				this.result = document.createElement("section")
+				this.result.id = "result"
+				document.body.appendChild(this.result)
+
+				// Initialize starting money
+				this.money = 100
+
+				// Initialize slot machines
+				this.slotMachines = []
+				for (let i = 0; i < 1; i++) {
+					this.slotMachines[i] = new slotMachine()
+				}
+			}
+
+			PlayAll() {
+				// Check if there is enough money to play
+				if (this.money > 0) {
+					this.money -= 1
+
+					let amountWon = 0
+					// Play every slot machine and sum up the amount earned through each
+					for (let i = 0; i < this.slotMachines.length; i++) {
+						this.slotMachines[i].play()
+						amountWon = amountWon + this.slotMachines[i].lastAmount
+					}
+
+					// Display the amount of money earned and add it to the total
+					this.result.innerHTML = "<p>Winner: " + amountWon + "</p><p>Current money: " + this.money + "</p>"
+					this.money += amountWon
+				}
+				else {
+					this.result.innerHTML = "<p>Game Over</p>"
+				}
+			}
+		}
+
+		class slotMachine {
+			constructor() {
+				this.lastAmount = 0
+				this.numbers = [0, 0, 0]
+				this.images = []
+
+				// Initialize slot machine images
+				for (let i = 0; i < 3; i++) {
+					this.images[i] = new Image()
+					this.images[i].src = "0.png"
+					this.images[i].alt = "0"
+					this.images[i].width = "64"
+					this.images[i].height = "64"
+
+					document.body.appendChild(this.images[i])
+				}
+			}
+
+			play() {
+				// Initialize the numbers list with random numbers from 0 to 6
+				for (let i = 0; i < 3; i++) {
+					this.numbers[i] = Math.floor(Math.random() * 7)
+					this.images[i].src = this.numbers[i] + ".png"
+					this.images[i].alt = this.numbers[i]
+				}
+
+				let reward = 0
+				// Three 0's rewards 14 points
+				if (this.numbers[0] == 0 && this.numbers[1] == 0 && this.numbers[2] == 0) {
+					reward = 14
+				}
+				// Three of any matching non-zero number rewards 7 points
+				// Equality is transitive, so we only need to make two checks
+				else if (this.numbers[0] == this.numbers[1] && this.numbers[1] == this.numbers[2]) {
+					reward = 7
+				}
+				// All but the last number being 0 rewards 3 points
+				else if (this.numbers[0] == 0 && this.numbers[1] == 0 && this.numbers[2] != 0) {
+					reward = 3
+				}
+				// All but the last number being 0 rewards 2 points
+				else if (this.numbers[0] != 0 && this.numbers[0] == this.numbers[1]) {
+					reward = 2
+				}
+				// Left value being zero rewards 1 point
+				else if (this.numbers[0] == 0) {
+					reward = 1
+				}
+				// Any other combination rewards nothing
+				else {
+					reward = 0
+				}
+
+				this.lastAmount = reward
+			}
+		}
+
+		function buttonPressed() {
+			mainInstance.PlayAll()
+		}
+
+		// Create main instance
+		let mainInstance = new main()
+
+		// Create play button and insert it into the document
+		let playButton = document.createElement("button")
+		playButton.onclick = buttonPressed
+		playButton.innerHTML = "Play"
+		document.body.appendChild(playButton)
+	</script>
+</body>

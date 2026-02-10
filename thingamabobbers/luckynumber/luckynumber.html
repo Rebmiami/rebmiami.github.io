@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<head>
+	<title>Welcome to the Lucky Number Game!</title>
+	<script>
+		class main {
+			// Initialize variables
+			constructor() {
+				// Win/loss totals
+				this.winTotal = 0
+				this.loseTotal = 0
+
+				// HTML image
+				const resultImage = document.getElementById("resultImage")
+			}
+
+			playGame() {
+				// Generate two random numbers between 1 and 100, inclusive
+				let num1 = Math.floor(Math.random() * 100) + 1
+				let num2 = Math.floor(Math.random() * 100) + 1
+
+				// Display the two numbers
+				document.getElementById("num1").innerHTML = "Number 1: " + num1;
+				document.getElementById("num2").innerHTML = "Number 2: " + num2;
+
+				// Determine whether the player wins, loses, or ties
+				// depending on which of the numbers is larger.
+
+				// If number 2 is greater than number 1, the player wins
+				if (num2 > num1) {
+					this.winTotal = this.winTotal + 1
+					document.getElementById("result").innerHTML = "You Win!";
+					document.getElementById("wintotal").innerHTML = "Total wins: " + this.winTotal;
+				}
+				// If number 2 is less than number 1, the player loses
+				else if (num2 < num1) {
+					this.loseTotal = this.loseTotal + 1
+					document.getElementById("result").innerHTML = "You Lose!";
+					document.getElementById("losetotal").innerHTML = "Total losses: " + this.loseTotal;
+				}
+				// If number 1 and 2 are equal, it's a tie
+				else {
+					document.getElementById("result").innerHTML = "It's a tie!";
+				}
+
+				// Change the result image depending on whether wins or losses are greater
+				if (this.winTotal > this.loseTotal) {
+					resultImage.src = "./win.png";
+				}
+				else if (this.winTotal < this.loseTotal) {
+					resultImage.src = "./lose.png";
+				}
+				else {
+					resultImage.src = "./tie.png";
+				}
+			}
+		}
+
+		// Create a global instance of main as an entry point
+		const mainInstance = new main()
+
+		// When the player presses the button, play the game
+		function buttonPressed() {
+			mainInstance.playGame()
+		}
+	</script>
+</head>
+<body>
+	<h1>Welcome to the Lucky Number Game!</h1>
+	<button onclick="buttonPressed()">Let's Go Gambling</button>
+	<p id="num1">Number 1:</p>
+	<p id="num2">Number 2:</p>
+	<p id="result">Press the button to play!</p>
+	<img id="resultImage" src="tie.png" width="200" />
+	<p id="wintotal">Total wins: 0</p>
+	<p id="losetotal">Total losses: 0</p>
+</body>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<head>
+	<title>2D Adventure</title>
+</head>
+<body>
+	<div style="display:none;">
+		<image id="player" src="player.png"></image>
+		<image id="enemy" src="enemy.png"></image>
+		<image id="potion" src="potion.png"></image>
+		<image id="grass" src="grass.png"></image>
+		<image id="wall" src="wall.png"></image>
+		<image id="tree" src="tree.png"></image>
+	</div>
+	<h1 style="align-content: center;">WELCOME TO GAME</h1></p>
+	<canvas id="game" width="640" height="448" style="border:1px solid black;"></canvas>
+	<p>Control character with WASD</p>
+	<p>Collide with a guy to fight him, drink liquid blue to heal</p>
+	<p>If nothing appears reload or smth
+	<script>
+		// Get canvas and canvas context2D
+		let canvas = document.getElementById("game")
+
+		let ctx = canvas.getContext("2d")
+
+		// Actor object which contains the shared values for players and monsters
+		class actor {
+			constructor(hp, mhp, atk, def, x, y, pic) {
+				this.hp = hp
+				this.mhp = mhp
+				this.atk = atk
+				this.def = def
+				this.x = x
+				this.y = y
+				this.pic = pic
+
+				this.dead = false
+			}
+
+			// Called on update to allow the actor to perform actions autonomously
+			ai(mazeInstance) {
+
+			}
+
+			// Tries to move this actor to the specified grid space
+			// If there is another actor occupying this space, they attack each other
+			tryMove(x, y, mazeInstance) {
+				// Check if there is an actor that could be attacked by this one
+				let potentialVictim = mazeInstance.getActorInSpace(x, y)
+				if (potentialVictim === undefined) {
+					// There are no other actors here, move unimpeded
+					this.x = x
+					this.y = y
+				}
+				else {
+					// Deal damage
+					if (this.canAttack(potentialVictim)) {
+						this.attack(potentialVictim)
+					}
+				}
+			}
+
+			// Returns true if this actor can attack the actor passed
+			canAttack(actor) {
+				// Prevent enemies from infighting by ensuring
+				// enemies can only attack players and vice versa
+				return (this instanceof player && actor instanceof enemy)
+					|| (this instanceof enemy && actor instanceof player)
+			}
+
+			attack(actor) {
+				// Calculate damage using attack, target defense, and a random factor
+				let damage = Math.max(actor.atk - this.def, 1) * Math.floor(1 + Math.random() * 6)
+				// Apply calculated damage
+				actor.hurt(damage)
+			}
+
+			hurt(damage) {
+				this.hp -= damage
+				// If HP drops below zero, mark the actor as dead
+				if (this.hp <= 0) {
+					this.hp = 0
+					this.dead = true
+				}
+			}
+
+			draw() {
+				// Convert game coordinates to screen coordinates
+				let screenX = this.x * 64
+				let screenY = this.y * 64
+
+				// Render actor sprite
+				ctx.drawImage(this.pic, screenX, screenY)
+
+				// Render health bar
+				let healthBarWidth = 50
+				let healthBarHeight = 4
+
+				// Black border around health bar
+				ctx.fillStyle = "#000"
+				ctx.fillRect(screenX + (64 - healthBarWidth) / 2 - 2, screenY - 6, healthBarWidth + 4, healthBarHeight + 4)
+				// Red part of health bar showing max health
+				ctx.fillStyle = "#F00"
+				ctx.fillRect(screenX + (64 - healthBarWidth) / 2, screenY - 4, healthBarWidth, healthBarHeight)
+				// Green part of health bar showing current health
+				ctx.fillStyle = "#0F0"
+				ctx.fillRect(screenX + (64 - healthBarWidth) / 2, screenY - 4, healthBarWidth * (this.hp / this.mhp), healthBarHeight)
+
+			}
+		}
+
+		class player extends actor {
+			ai(mazeInstance) {
+				// Collect potions
+				if (mazeInstance.maze[this.y][this.x] == 3) {
+					mazeInstance.maze[this.y][this.x] = 0
+					this.hp = Math.min(this.hp + 15, this.mhp)
+				}
+			}
+		}
+
+		class enemy extends actor {
+			ai(mazeInstance) {
+				let directions = ["up", "down", "left", "right"]
+				let openDirections = []
+				for (let i = 0; i < directions.length; i++) {
+					if (mazeInstance.canMoveInDirection(this.x, this.y, directions[i])) {
+						openDirections.push(directions[i])
+					}
+				}
+				if (openDirections.length > 0) {
+					let randomDirection = openDirections[Math.floor(Math.random() * openDirections.length)]
+					mazeInstance.moveActorInDirection(this, randomDirection)
+				}
+			}
+		}
+
+		// Main class that stores the game state and handles rendering
+		class main {
+			constructor() {
+				// Load HTML images
+				this.playerPic = document.getElementById("player");
+				this.enemyPic = document.getElementById("enemy");
+				this.potionPic = document.getElementById("potion");
+				this.treePic = document.getElementById("tree");
+				this.wallPic = document.getElementById("wall");
+				this.grassPic = document.getElementById("grass");
+
+				// Initialize player and monsters
+				this.player = new player(30, 30, 5, 5, 1, 1, this.playerPic)
+				this.actors = [
+					this.player,
+					new enemy(8, 8, 1, 2, 6, 1, this.enemyPic),
+					new enemy(12, 12, 6, 5, 1, 5, this.enemyPic),
+					new enemy(16, 16, 2, 10, 8, 4, this.enemyPic)
+				]
+
+				this.gameState = "maze"
+
+				// Initialize maze
+				this.mazeHeight = 7
+				this.mazeWidth = 10
+
+				// 0 = walkable tile
+				// 1 = tree
+				// 2 = wall
+				// 3 = potion
+				this.maze = [
+					[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+					[2, 0, 0, 0, 0, 0, 0, 1, 0, 2],
+					[2, 0, 1, 0, 1, 1, 3, 1, 0, 2],
+					[2, 0, 1, 0, 0, 1, 0, 1, 0, 2],
+					[2, 0, 1, 1, 0, 0, 0, 1, 0, 2],
+					[2, 0, 3, 0, 0, 1, 0, 0, 0, 2],
+					[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+				]
+
+				// Render
+				this.render()
+
+				// Add keypress event listener to perform game logic when the player moves
+				let mazeInstance = this
+				addEventListener("keypress", (event) => {
+					let direction = ""
+					switch (event.code) {
+						case "KeyW":
+							direction = "up"
+							break
+						case "KeyA":
+							direction = "left"
+							break
+						case "KeyS":
+							direction = "down"
+							break
+						case "KeyD":
+							direction = "right"
+							break
+					}
+
+					if (direction != "") {
+						// Move the player
+						mazeInstance.moveActorInDirection(mazeInstance.player, direction)
+
+						let numEnemiesAlive = 0
+
+						// Process AI
+						for (let i = 0; i < mazeInstance.actors.length; i++) {
+							let actor = mazeInstance.actors[i]
+							if (!actor.dead) {
+								actor.ai(mazeInstance)
+							}
+
+							// Count enemies remaining alive to check win condition
+							if (actor instanceof enemy && !actor.dead) {
+								numEnemiesAlive++
+							}
+						}
+
+						// Update game state
+						if (mazeInstance.player.dead) {
+							mazeInstance.gameState = "lose"
+						}
+						else if (numEnemiesAlive == 0) {
+							mazeInstance.gameState = "win"
+						}
+
+						// Render result
+						mazeInstance.render()
+					}
+			 	})
+			}
+
+			// Draw the current game state
+			render() {
+				switch (this.gameState) {
+					case "maze":
+						for (let i = 0; i < this.mazeHeight; i++) {
+							for (let j = 0; j < this.mazeWidth; j++) {
+								let screenX = j * 64
+								let screenY = i * 64
+
+								// Always render grass below other tiles
+								ctx.drawImage(this.grassPic, screenX, screenY)
+
+								// Render trees
+								if (this.maze[i][j] == 1) {
+									ctx.drawImage(this.treePic, screenX, screenY)
+								}
+								// Render walls
+								if (this.maze[i][j] == 2) {
+									ctx.drawImage(this.wallPic, screenX, screenY)
+								}
+								// Render potions
+								if (this.maze[i][j] == 3) {
+									ctx.drawImage(this.potionPic, screenX, screenY)
+								}
+							}
+						}
+
+						for (let i = 0; i < this.actors.length; i++) {
+							if (!this.actors[i].dead) {
+								this.actors[i].draw()
+							}
+						}
+						break;
+					case "win":
+						ctx.fillStyle = "#FF0"
+						ctx.fillRect(screenX, screenY, 640, 448)
+
+						ctx.fillStyle = "#000"
+						ctx.font = "100px Arial";
+						ctx.fillText("You Win!", 120, 250);
+						break;
+					case "lose":
+						ctx.fillStyle = "#000"
+						ctx.fillRect(screenX, screenY, 640, 448)
+
+						ctx.fillStyle = "#F00"
+						ctx.font = "100px Arial";
+						ctx.fillText("Game Over!", 50, 250);
+						break;
+				}
+			}
+
+			// Returns true if and only if the specified x and y coordinates are
+			// inside the bounds of the maze.
+			inBounds(x, y) {
+				if (x >= this.mazeWidth || x < 0) {
+					return false
+				}
+				if (y >= this.mazeHeight || y < 0) {
+					return false
+				}
+				return true
+			}
+
+			// Is the player or enemies allowed to traverse the tile at these coordinates?
+			// This does not account for actor-actor collisions
+			isTileTraversible(x, y) {
+				if (!this.inBounds(x, y)) {
+					return false
+				}
+				let tileType = this.maze[y][x]
+				// Trees and walls are off limits
+				if (tileType == 1 || tileType == 2) {
+					return false
+				}
+				return true
+			}
+
+			// Checks the coordinates for any other actors in that space
+			// If one is found, return a reference to it. Otherwise, return nothing
+			getActorInSpace(x, y) {
+				for (let i = 0; i < this.actors.length; i++) {
+					let actor = this.actors[i]
+					if (!actor.dead && actor.x == x && actor.y == y) {
+						return actor
+					}
+				}
+			}
+
+			// If possible, moves the actor in the direction specified
+			moveActorInDirection(actor, direction) {
+				let newX = main.adjustCoordinate(actor.x, true, direction)
+				let newY = main.adjustCoordinate(actor.y, false, direction)
+
+				if (this.isTileTraversible(newX, newY)) {
+					actor.tryMove(newX, newY, this)
+				}
+			}
+
+			// Adjusts a component of a specific coordinate in one direction by 1
+			static adjustCoordinate(n, isX, direction) {
+				switch (direction) {
+					case "up":
+						if (!isX) {
+							return n - 1
+						}
+						break
+					case "down":
+						if (!isX) {
+							return n + 1
+						}
+						break
+					case "left":
+						if (isX) {
+							return n - 1
+						}
+						break
+					case "right":
+						if (isX) {
+							return n + 1
+						}
+						break
+				}
+				return n
+			}
+
+			canMoveInDirection(x, y, direction) {
+				let newX = main.adjustCoordinate(x, true, direction)
+				let newY = main.adjustCoordinate(y, false, direction)
+
+				return this.isTileTraversible(newX, newY)
+			}
+		}
+
+		// Create main instance
+		let mainInstance = new main()
+	</script>
+</body>
