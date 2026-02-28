@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>The Painful Paint Program of Perdition!!!</title>
+		<script id="2dVertexShader" type="notjs">
+			attribute vec4 a_position;
+			attribute vec3 a_color;
+			varying vec3 v_color;
+			void main() {
+				v_color = a_color;
+				gl_Position = a_position;
+			}
+		</script>
+		<script id="2dFragmentShader" type="notjs">
+			precision mediump float;
+			varying vec3 v_color;
+			void main() {
+				gl_FragColor = vec4(v_color,1);
+			}
+		</script>
+		<script>
+		// Initializes WebGL shaders and programs
+		class InitWebGLProgram {
+			constructor() {
+				gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+				gl.clearColor(1, 1, 1, 1);
+				gl.clear(gl.COLOR_BUFFER_BIT);
+			}
+
+			createShader(type, source) {
+				let shader = gl.createShader(type);
+				gl.shaderSource(shader, source);
+				gl.compileShader(shader);
+
+				let success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+				if (success) {
+					return shader;
+				}
+				else {
+					console.error(gl.getShaderInfoLog(shader));
+					gl.deleteShader(shader);
+				}
+			}
+
+			createProgram(vs, fs) {
+				let program = gl.createProgram();
+				gl.attachShader(program, vs);
+				gl.attachShader(program, fs);
+				gl.linkProgram(program);
+
+				let success = gl.getProgramParameter(program, gl.LINK_STATUS);
+				if (success) {
+					return program;
+				}
+				else {
+					console.error(gl.getProgramInfoLog(program));
+					gl.deleteProgram(program);
+				}
+			}
+		}
+
+		// The base Shape class that all other shapes inherit from
+		class Shape {
+			// Generic shape constructor initializes values shared by all shapes
+			constructor() {
+				// Initialize variables that indicate the state of the shape
+
+				// The points that define this shape, as entered by the user
+				// e.g. a circle is defined by two points, its center and radius
+				this.points = [];
+
+				// Whether this shape is done being drawn. If false, it will be rendered as a LINE_LOOP
+				this.done = false;
+
+				// The vertices used to render this shape. These are recalculated when points are added or removed
+				this.vertices = [];
+
+				// The following should be overwritten by shapes that inherit from this class
+
+				// If nonzero, this specifies the number of points required to define this shape.
+				// Otherwise, the shape will continue accepting points until a right click.
+				this.pointCt = 0;
+				// Only used by shapes with a pointCt of 0. This specifies the minimum number of points
+				// that must be added before the shape can be finished
+				this.minPoints = 0;
+				// The primitive type to use when this shape is finished being drawn.
+				// Until then, or if the fill style is lines, it will default to LINE_LOOP.
+				this.renderStyle = gl.LINE_LOOP;
+
+				this.vertexBuffer = gl.createBuffer();
+				this.refreshBuffer();
+			}
+
+			setAppearance(r, g, b, isFilled) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+				this.fill = isFilled;
+			}
+
+			// Refresh the buffer using the current vertex array
+			refreshBuffer() {
+				gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
+			}
+
+			addPoint(x, y, final) {
+				this.points.push(x);
+				this.points.push(y);
+				this.rebuildVertices();
+				this.refreshBuffer();
+			}
+
+			// Pops the highest point from the point array
+			// This is needed to implement the "ghost" shapes when the user is in the prcoess of drawing a shape
+			popPoint() {
+				this.points.pop();
+				this.points.pop();
+			}
+
+			addVertex(x, y) {
+				this.vertices.push(x);
+				this.vertices.push(y);
+				this.vertices.push(this.r);
+				this.vertices.push(this.g);
+				this.vertices.push(this.b);
+			}
+
+			// This function can be overridden by a shape to define how its vertices should be constructed from its points
+			rebuildVertices() {
+				this.vertices = [];
+
+				for (let i = 0; i < this.points.length; i += 2) {
+					let x = this.points[i];
+					let y = this.points[i + 1];
+
+					this.addVertex(x, y);
+				}
+			}
+
+			getRenderStyle() {
+				if (!this.done || !this.fill) {
+					return gl.LINE_LOOP;
+				}
+				return this.renderStyle;
+			}
+
+			// Render the shape using its vertex buffer
+			render(program) {
+				// Find the attribute positions
+				let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+				let colorAttributeLocation = gl.getAttribLocation(program, "a_color");
+
+				// Specify how to read the vertices
+				gl.enableVertexAttribArray(positionAttributeLocation);
+				gl.enableVertexAttribArray(colorAttributeLocation);
+
+				// Bind the buffer
+				gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+
+				gl.vertexAttribPointer(
+					positionAttributeLocation,
+					2, // Size
+					gl.FLOAT, // Type
+					false, // Normalize
+					5 * 4, // Stride
+					0 * 4, // Offset
+				);
+
+				gl.vertexAttribPointer(
+					colorAttributeLocation,
+					3, // Size
+					gl.FLOAT, // Type
+					false, // Normalize
+					5 * 4, // Stride
+					2 * 4, // Offset
+				)
+
+				let primitiveType = this.getRenderStyle();
+				let offset = 0;
+				let count = this.vertices.length / 5;
+				gl.drawArrays(primitiveType, offset, count);
+			}
+		}
+
+		// Witness the power of code reuse
+		class Box extends Shape {
+			constructor() {
+				super();
+
+				this.pointCt = 2;
+				this.renderStyle = gl.TRIANGLE_FAN;
+			}
+
+			rebuildVertices() {
+				this.vertices = [];
+
+				if (this.points.length == 4) {
+					let x1 = this.points[0];
+					let y1 = this.points[1];
+					let x2 = this.points[2];
+					let y2 = this.points[3];
+
+					this.addVertex(x1, y1);
+					this.addVertex(x2, y1);
+					this.addVertex(x2, y2);
+					this.addVertex(x1, y2);
+				}
+			}
+		}
+
+		class Line extends Shape {
+			constructor() {
+				super();
+
+				this.pointCt = 0;
+				this.renderStyle = gl.LINE_STRIP;
+			}
+
+			getRenderStyle() {
+				return gl.LINE_STRIP;
+			}
+		}
+
+		class Circle extends Shape {
+			constructor() {
+				super();
+
+				this.pointCt = 2;
+				this.renderStyle = gl.TRIANGLE_FAN;
+			}
+
+			rebuildVertices() {
+				this.vertices = [];
+
+				if (this.points.length == 4) {
+					// Calculate the distance from the center to the second point
+					let dx = this.points[0] - this.points[2];
+					let dy = this.points[1] - this.points[3];
+
+					let radius = Math.sqrt((dx * dx) + (dy * dy));
+
+					// Variable resolution makes circles look smooth at all sizes
+					let resolution = Math.floor(Math.max(radius * 500, 10));
+					// Add vertices in a circle
+					for (let i = 0; i < resolution + 1; i++) {
+						let theta = i / resolution * Math.PI * 2;
+						let x = this.points[0] + Math.sin(theta) * radius;
+						let y = this.points[1] + Math.cos(theta) * radius;
+
+						this.addVertex(x, y);
+					}
+				}
+			}
+		}
+
+		class Triangle extends Shape {
+			constructor() {
+				super();
+
+				this.pointCt = 3;
+				this.renderStyle = gl.TRIANGLES;
+			}
+		}
+
+		class NGon extends Shape {
+			constructor() {
+				super();
+
+				this.pointCt = 0;
+				this.renderStyle = gl.TRIANGLE_FAN;
+			}
+		}
+
+		class main {
+			constructor() {
+				// Initialize webGL program
+				this.webGL = new InitWebGLProgram();
+
+				let vertexShaderSource = document.getElementById("2dVertexShader").text;
+				let fragmentShaderSource = document.getElementById("2dFragmentShader").text;
+
+				let vertexShader = this.webGL.createShader(gl.VERTEX_SHADER, vertexShaderSource);
+				let fragmentShader = this.webGL.createShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+				this.program = this.webGL.createProgram(vertexShader, fragmentShader);
+
+				gl.useProgram(this.program);
+
+				// Setup palette and color
+
+				// Create palette
+				this.addColorToPalette("#000000");
+				this.addColorToPalette("#ffffff");
+				this.addColorToPalette("#ff3737");
+				this.addColorToPalette("#ffaa3a");
+				this.addColorToPalette("#f4ff4d");
+				this.addColorToPalette("#98ff38");
+				this.addColorToPalette("#53c428");
+				this.addColorToPalette("#30edc3");
+				this.addColorToPalette("#4d61ea");
+				this.addColorToPalette("#9f4cb4");
+				this.addColorToPalette("#ff94bb");
+
+				this.addColorToPalette("#555555");
+				this.addColorToPalette("#aaaaaa");
+				this.addColorToPalette("#5d0303");
+				this.addColorToPalette("#4f2609");
+				this.addColorToPalette("#55520a");
+				this.addColorToPalette("#365c14");
+				this.addColorToPalette("#0a4805");
+				this.addColorToPalette("#266f65");
+				this.addColorToPalette("#213e68");
+				this.addColorToPalette("#411d4a");
+				this.addColorToPalette("#8a5769");
+
+				// Default color is black
+				this.setColor("#000000");
+
+				// Default shape is a box
+				this.setShape("box");
+
+				// The array of shapes that new shapes will be added to
+				this.shapes = [];
+			}
+
+			addColorToPalette(color) {
+				let paletteHtml = document.getElementById("palette");
+				let newElement = document.createElement("button");
+
+				paletteHtml.appendChild(newElement);
+
+				newElement.classList.add("paletteButton");
+				newElement.onclick = function (event) {
+					m.setColor(color);
+				};
+				newElement.style.backgroundColor = color;
+			}
+
+			render() {
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+				for (let i = 0; i < this.shapes.length; i++) {
+					let shape = this.shapes[i];
+					shape.render(this.program);
+				}
+			}
+
+			static mouseHandle(event) {
+				m.canvasHandle(event);
+				// Prevent right click from conjuring the evil context menu
+				event.preventDefault();
+			}
+
+			setColor(color) {
+				console.log("Tried making the color " + color.slice(1));
+				document.getElementById("colorSelect").value = color;
+				let colorNum = parseInt(color.slice(1), 16);
+				// console.log("Parsed as " + colorNum);
+				this.r = (colorNum >> 16) & 0xFF;
+				this.g = (colorNum >> 8) & 0xFF;
+				this.b = (colorNum >> 0) & 0xFF;
+				console.log("r: " + this.r + ", g: " + this.g + ", b: " + this.b);
+			}
+
+			setShape(shape) {
+				this.shape = shape;
+
+				let shapeButtons = document.getElementById("shapeControls");
+
+				for (const child of shapeButtons.children) {
+					if (child.name == shape) {
+						child.classList.add("pressed");
+					}
+					else {
+						child.classList.remove("pressed");
+					}
+				}
+			}
+
+			setStyle(style) {
+				this.isFilled = style == filled;
+			}
+
+			canvasHandle(event) {
+				// Convert canvas coordinates to webgl coordinates
+				let rect = canvas.getBoundingClientRect();
+				let realX = event.clientX - rect.left;
+				let realY = event.clientY - rect.top;
+
+				let x = -1 + 2 * realX / canvas.width;
+				let y = 1 - 2 * realY / canvas.height;
+
+				let eventType = event.type;
+
+				let isMouseMove = event.type == "mousemove";
+				let isLeftClick = event.type == "click";
+				let isRightClick = event.type == "contextmenu";
+
+				// Cool trick I learned to get the last element of an array
+				let lastShape = this.shapes.slice(-1)[0];
+
+				// If this is the first shape, or the last shape is done, it's time for a new one!
+				if (lastShape == undefined || lastShape.done) {
+					// Only create a new shape on left click
+					if (isLeftClick) {
+						// Read the dropdowns
+						let styleChooser = document.getElementById("styleChooser");
+
+						let newShape;
+
+						switch (this.shape) {
+							case "box":
+						 		newShape = new Box();
+								break;
+							case "line":
+						 		newShape = new Line();
+								break;
+							case "circle":
+						 		newShape = new Circle();
+								break;
+							case "triangle":
+						 		newShape = new Triangle();
+								break;
+							case "ngon":
+						 		newShape = new NGon();
+								break;
+						}
+
+						if (newShape != undefined) {
+							newShape.setAppearance(
+								this.r / 255.,
+								this.g / 255.,
+								this.b / 255.,
+								styleChooser.checked
+							);
+
+							newShape.addPoint(x, y);
+							this.shapes.push(newShape);
+
+							this.render();
+						}
+					}
+				}
+				else {
+					let numPoints = lastShape.points.length / 2;
+
+					// Add a "ghost point" to preview what the shape will look like
+					if (isMouseMove) {
+						lastShape.addPoint(x, y);true
+						this.render();
+						lastShape.popPoint();
+					}
+					else if (isLeftClick) {
+						// Add a new point. If the shape has a specified number of vertices,
+						// mark the shape as done if it is exceeded.
+						lastShape.addPoint(x, y);
+						if (lastShape.pointCt != 0 && numPoints + 1 >= lastShape.pointCt) {
+							lastShape.done = true;
+						}
+						this.render();
+					}
+					else if (isRightClick) {
+						// For shapes that do not have a specified number of vertices, add a final vertex if possible and finish the shape.
+						if (lastShape.pointCt == 0 && numPoints + 1 >= lastShape.minPoints) {
+							lastShape.addPoint(x, y);
+							lastShape.done = true;
+						}
+						this.render();
+					}
+				}
+			}
+
+			undo() {
+				// Undo the most recently drawn shape
+				this.shapes.pop();
+				this.render();
+			}
+
+			clear() {
+				// Clear all shapes
+				this.shapes = [];
+				this.render();
+			}
+
+			downloadPicture() {
+				// Make a blob out of the image and let the user save it
+				let blob = canvas.toBlob(function(blob) {
+					// Create a url for the image blob
+					let url = URL.createObjectURL(blob);
+
+					// Open the URL by creating a link element
+					let a = document.createElement("a");
+
+					a.download = "my_beautiful_perditious_picture";
+					a.href = url;
+
+					a.click();
+				});
+			}
+		}
+		</script>
+
+		<style>
+		canvas {
+		}
+
+		body {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+
+			background-color: burlywood;
+		}
+
+		.divider {
+			width: 3px;
+			height: inherit;
+			background-color: lightgray;
+			display: block;
+
+			margin: 0px 10px;
+		}
+
+		.raisedBox {
+			box-shadow: 4px 4px;
+			outline: 2px solid black;
+			background-color: white;
+		}
+
+		.controlItem {
+			border-style: ridge;
+			border-radius: 0px;
+			border-width: 2px;
+
+			height: 32px;
+			padding: 0;
+		}
+
+		.pressed {
+			border-style: groove;
+			background-color: #b1b1b9;
+		}
+
+		.controlIcon {
+			height: 100%;
+			width: 100%;
+		}
+
+		.controlGroup {
+			display: flex;
+			flex-wrap: wrap;
+			margin: 2px;
+		}
+
+		.controls {
+			display: flex;
+			flex-wrap: nowrap;
+			outline: 2px solid black;
+			padding: 2px 0px 2px 0px;
+			margin: 8px;
+			width: 500px;
+
+			align-items: stretch;
+			justify-content: center;
+		}
+
+		.palette {
+			display: flex;
+			flex-wrap: wrap;
+			width: calc(16px * 11);
+		}
+
+		.paletteButton {
+			width: 16px;
+			height: 16px;
+			padding: 0px;
+		}
+		</style>
+	</head>
+	<body>
+		<h1>The Paint Program of Perdition!</h1>
+		<canvas class="raisedBox" id="myCanvas" width="500" height="500">
+			Your browser does not support canvas.
+		</canvas>
+
+		<div class="controls raisedBox">
+			<div class="controlGroup" id="shapeControls">
+				<button name="box" class="controlItem" onclick="m.setShape('box')">
+					<img class="controlIcon" src="box.png">
+				</button>
+				<button name="line" class="controlItem" onclick="m.setShape('line')">
+					<img class="controlIcon" src="line.png">
+				</button>
+				<button name="circle" class="controlItem" onclick="m.setShape('circle')">
+					<img class="controlIcon" src="circle.png">
+				</button>
+				<button name="triangle" class="controlItem" onclick="m.setShape('triangle')">
+					<img class="controlIcon" src="triangle.png">
+				</button>
+				<button name="ngon" class="controlItem" onclick="m.setShape('ngon')">
+					<img class="controlIcon" src="ngon.png">
+				</button>
+			</div>
+
+			<div class="controlGroup">
+				<input type="checkbox" id="styleChooser" checked>
+				<label style="margin: 7px 0px 7px 0px;" for="styleChooser">Fill</label>
+			</div>
+
+			<div class="divider"></div>
+
+			<div class="controlGroup">
+				<input class="controlItem" type="color" id="colorSelect">
+			</div>
+
+			<div class="controlGroup">
+				<div class="palette" id="palette">
+				</div>
+			</div>
+		</div>
+
+		<div class="controls raisedBox">
+			<div class="controlGroup">
+				<button onclick="m.downloadPicture()">Save</button>
+			</div>
+
+			<div class="controlGroup">
+				<button onclick="m.undo()">Undo</button>
+			</div>
+
+			<div class="controlGroup">
+				<button onclick="m.clear()">Clear</button>
+			</div>
+		</div>
+
+		<p>(For Line and Polygon, right click to stop drawing.)</p>
+
+		<script>
+			// Initialize canvas and webgl
+			const canvas = document.getElementById("myCanvas");
+			// preserveDrawingBuffer is to allow the user to download the image
+			const gl = canvas.getContext("webgl", {preserveDrawingBuffer: true});
+
+			const m = new main();
+		</script>
+
+		<script>
+			// Detect left click
+			canvas.addEventListener("click", main.mouseHandle);
+			// Detect right click
+			canvas.addEventListener("contextmenu", main.mouseHandle);
+			// Detect mouse move
+			canvas.addEventListener("mousemove", main.mouseHandle);
+
+			// Change color
+			document.getElementById("colorSelect").onchange = function() {
+				m.setColor(this.value);
+			};
+		</script>
+	</body>
+</html>
