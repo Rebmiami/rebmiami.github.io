@@ -1,0 +1,335 @@
+<!DOCTYPE HTML>
+<HTML lang="en">
+	<Head>
+	<Title>Coin Collectors!</TITLE>
+
+		<!--
+		GLSL is the language used for shaders (GL Shader Language)
+		Attribute - you specify how to pull the data out of the buffers you supply.
+		Buffers - Data loaded onto the GPU (Normally vertex information)
+		Uniforms - global variables (in GLSL) that you set before you run the shader program
+		Textures - Textures are arrays of data you can randomly acces in your shader program.
+		Varying - are way for a vertex shader to pass data to the fragmentShader.
+		-->
+		<script id="2dVertexShader" type="notjs">
+		attribute vec4 a_position;
+		//We now want to read in Colors
+		attribute vec3 vert_color;
+		//However, we want to send the color to
+		//The fragment Shader
+		varying vec3 fragColor;
+
+		//Now we need a uniform.  A uniform is something consistent for all the vertices
+		//in a buffers
+		uniform vec3 transform;
+		uniform vec3 rotation;
+
+		//Use a function to position the object
+		vec4 PositionObject(vec4 pos)
+		{
+			mat4 translateM = mat4(1.0,0.0,0.0,0.0,
+						   0.0,1.0,0.0,0.0,
+						   0.0,0.0,1.0,0.0,
+						   transform.x,transform.y,transform.z,1.0);
+			return translateM*pos;
+		}
+		//Use a function to Rotate the object
+		vec4 RotateObject(vec4 pos)
+		{
+			//This is a nice trick
+			vec3 c = cos(rotation);
+			vec3 s = sin(rotation);
+			fragColor = vert_color;
+			//Surprise!  we have to go column firt when we enter the matrix.
+
+			mat4 rotateX = mat4(1.0,0.0,0.0,0.0,
+								0.0,c.x,s.x,0.0,
+								0.0,-s.x,c.x,0.0,
+								0.0,0.0,0.0,1.0);
+			mat4 rotateY = mat4(c.y,0.0,-s.y,0.0,
+								0.0,1.0,0.0,0.0,
+								s.y,0.0,c.y,0.0,
+								0.0,0.0,0.0,1.0);
+			mat4 rotateZ = mat4(c.z,s.z,0.0,0.0,
+								-s.z,c.z,0.0,0.0,
+								0.0,0.0,1.0,0.0,
+								0.0,0.0,0.0,1.0);
+			return rotateZ*rotateY*rotateX*pos;
+		}
+		void main()
+		{
+			gl_Position=PositionObject(RotateObject(a_position));
+		}
+		</SCRIPT>
+		<script id="2dFragmentShader" type="notjs">
+		//Fragment shaders do not have precision so we have to set it.
+		precision mediump float;
+		varying vec3 fragColor;
+		void main()
+		{
+			//gl_FragColor = vec4(0,0,1,1); //Between 0 and 1.
+			gl_FragColor = vec4(fragColor,1);
+		}
+		</script>
+		<script src="webgl_interface.js"></script>
+		<script src="BasicGameObject.js"></script>
+
+		<script>
+		class main
+		{
+			constructor()
+			{
+				this.Visual = {};
+				this.Solid = {};
+				this.Trigger = {};
+				this.ObjectCounter = 0;
+
+				this.score = 0;
+
+				this.myWEBGL = new WebGL_Interface();
+				this.program = this.myWEBGL.program;
+				this.Keys = [];
+			}
+
+			AddScore() {
+				this.score++;
+
+				document.getElementById("status").innerHTML = "SCORE: " + this.score;
+			}
+
+			UpdateAll()
+			{
+				var player = this.Solid["ID0"];
+
+				// player is dead
+				if (!player) {
+					return;
+				}
+				var moveDir = [
+					Math.sin(player.rot[2]),
+					Math.cos(player.rot[2]),
+					0
+				]
+				var moveAmount = 0;
+				if (this.Keys["W"]) {
+					moveAmount = 0.02;
+				}
+				if (this.Keys["A"]) {
+					player.rot[2] += 0.08;
+				}
+				if (this.Keys["S"]) {
+					moveAmount = -0.01;
+				}
+				if (this.Keys["D"]) {
+					player.rot[2] -= 0.08;
+				}
+				if (this.Keys[" "] && player.reload == 0) { // Space
+					player.reload = 30;
+					var bullet = m.CreateObject(2,Bullet,player.loc,player.rot);
+					bullet.velocity[0] = -moveDir[0] * 0.04;
+					bullet.velocity[1] = moveDir[1] * 0.04;
+				}
+
+				player.velocity[0] = -moveDir[0] * moveAmount;
+				player.velocity[1] = moveDir[1] * moveAmount;
+
+				for (var i in this.Visual) {
+					this.Visual[i].Update();
+				}
+				for (var i in this.Solid) {
+					this.Solid[i].Update();
+				}
+				for (var i in this.Trigger) {
+					this.Trigger[i].Update();
+				}
+			}
+
+			RenderAll()
+			{
+				for (var i in this.Visual) {
+					this.Visual[i].Render(this.program);
+				}
+				for (var i in this.Solid) {
+					this.Solid[i].Render(this.program);
+				}
+				for (var i in this.Trigger) {
+					this.Trigger[i].Render(this.program);
+				}
+			}
+
+			CheckCollision(loc1, rad1, loc2, rad2)
+			{
+				var dist = Math.sqrt(
+					Math.pow(loc1[0] - loc2[0], 2) +
+					Math.pow(loc1[1] - loc2[1], 2) +
+					Math.pow(loc1[2] - loc2[2], 2)
+				);
+				return dist < rad1 + rad2;
+			}
+
+			CreateObject(type, prefab, loc, rot)
+			{
+				//type 0 = visual
+				//type 1 = solid
+				//type 2 = trigger
+				var temp = new prefab;
+				var id = "ID"+this.ObjectCounter;
+				this.ObjectCounter++;
+				temp.id = id;
+				temp.prefab = prefab;
+				for (var i = 0; i < 3; i++) {
+					temp.loc[i] = loc[i];
+					temp.rot[i] = rot[i];
+				}
+				switch (type) {
+					case 0:
+						this.Visual[id] = temp;
+						break;
+					case 1:
+						this.Solid[id] = temp;
+						break;
+					case 2:
+						this.Trigger[id] = temp;
+						temp.isTrigger = true;
+						break;
+					default:
+						break;
+				}
+				return temp;
+			}
+
+			DestroyObject(id)
+			{
+				if (id in this.Visual) {
+					delete this.Visual[id];
+				}
+				if (id in this.Solid) {
+					delete this.Solid[id];
+				}
+				if (id in this.Trigger) {
+					delete this.Trigger[id];
+				}
+			}
+
+			KeyDown(event)
+			{
+				this.Keys[String.fromCharCode(event.keyCode)] = true;
+				console.log("The number of the key pressed:  "+event.keyCode+
+				",the string of the event code: "+String.fromCharCode(event.keyCode));
+			}
+
+			KeyUp(event) {
+				this.Keys[String.fromCharCode(event.keyCode)] = false;
+				console.log(String.fromCharCode(event.keyCode) + " should be false - " + this.Keys[String.fromCharCode(event.keyCode)])
+			}
+
+			CheckKey(key) {
+				if (key in this.Keys) {
+					return this.Keys[key];
+				}
+				return false;
+			}
+
+			MouseClick(event)
+			{
+				var rect = canvas.getBoundingClientRect();
+				var realX = event.clientX - rect.left;
+				var realY = event.clientY - rect.top;
+				console.log(realX+","+realY);
+				var x = -1 + 2*realX/myCanvas.width;
+				var y = -1 + 2*(myCanvas.height - realY)/myCanvas.height;
+				console.log("The click occurred on "+x+","+y);
+			}
+
+
+			//Static call backs go down here
+			//   |
+			//  \ /
+			//   v
+			static keyD(event)
+			{
+				m.KeyDown(event);
+			}
+
+			static keyU(event)
+			{
+				m.KeyUp(event);
+			}
+
+			static mouseH(event)
+			{
+				m.MouseClick(event);
+			}
+
+			static MainLoop()
+			{
+				m.UpdateAll();
+				m.RenderAll();
+				requestAnimationFrame(main.MainLoop);
+			}
+		}
+		</script>
+	</Head>
+	<BODY style="padding: 15px;">
+		<HEADER>
+
+		</HEADER>
+
+		<h1 id="status">SCORE: 0</h1>
+		<CANVAS id="myCanvas" width="400" height="400" style = "border: 1px solid #000;">
+			Your browser does not support canvas.
+		</CANVAS>
+
+		<p>Use WASD to move and rotate the ship, and press SPACE to fire bullets.</p>
+		<p>Try to collect golden coins while avoiding spinning baddies. Baddies can be killed by shooting them 3 times.</p>
+
+		<SCRIPT>
+			var canvas = document.getElementById("myCanvas");
+			var gl = canvas.getContext("webgl");
+			var m = new main();
+			window.onkeydown = main.keyD;
+			window.onkeyup = main.keyU;
+			canvas.addEventListener("click",main.mouseH);
+
+			requestAnimationFrame(main.MainLoop);
+
+			m.CreateObject(1,Ship,[0,0,0],[0,0,0]);
+			m.CreateObject(2,Coin,[0.5,0,0],[0,0,0]);
+			m.CreateObject(2,Coin,[-0.5,0.5,0],[0,0,0]);
+			m.CreateObject(2,Coin,[-0.5,-0.5,0],[0,0,0]);
+			var enemy = m.CreateObject(1,Enemy,[0,-0.5,0],[0,0,0]);
+
+			var bounceAngle = 1
+			var moveDir = [
+				Math.sin(bounceAngle),
+				Math.cos(bounceAngle),
+				0
+			]
+			enemy.velocity[0] = -moveDir[0] * 0.01;
+			enemy.velocity[1] = moveDir[1] * 0.01;
+			var enemy = m.CreateObject(1,Enemy,[0.5,-0.5,0],[0,0,0]);
+			enemy.velocity[0] = moveDir[0] * 0.01;
+			enemy.velocity[1] = -moveDir[1] * 0.01;
+
+			// Surrounding walls
+			for (var i = 0; i < 100; i++) {
+				var x = i % 10;
+				var y = Math.floor(i / 10);
+				if (x == 0 || x == 9 || y == 0 || y == 9) {
+					m.CreateObject(1,Wall,[x / 5 - 0.9,y / 5 - 0.9,0],[0,0,0]);
+				}
+			}
+
+			m.CreateObject(1,Wall,[0.5,0.5,0],[0,0,0]);
+			m.CreateObject(1,Wall,[-0.5,0,0],[0,0,0]);
+
+		</SCRIPT>
+
+		<FOOTER>
+
+		</FOOTER>
+
+
+	</BODY>
+
+</HTML>
