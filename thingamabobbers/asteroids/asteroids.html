@@ -1,0 +1,436 @@
+<!DOCTYPE HTML>
+<HTML lang="en">
+	<Head>
+	<Title>Space Junk Cleanup Program</TITLE>
+		<!--
+		GLSL is the language used for shaders (GL Shader Language)
+		Attribute - you specify how to pull the data out of the buffers you supply.
+		Buffers - Data loaded onto the GPU (Normally vertex information)
+		Uniforms - global variables (in GLSL) that you set before you run the shader program
+		Textures - Textures are arrays of data you can randomly acces in your shader program.
+		Varying - are way for a vertex shader to pass data to the fragmentShader.
+		-->
+		<script id="2dVertexShader" type="notjs">
+		attribute vec4 a_position;
+		//We now want to read in Colors
+		attribute vec3 vert_color;
+		//However, we want to send the color to
+		//The fragment Shader
+		varying vec3 fragColor;
+		uniform vec3 transform;
+		uniform vec3 rotation;
+
+		uniform vec3 worldLoc;
+		uniform vec3 worldRotation;
+		uniform float n;
+		uniform float f;
+		uniform float r;
+		uniform float t;
+
+		vec4 MoveCamera(vec4 pos) {
+			vec3 cw = cos(-worldRotation);
+			vec3 sw = sin(-worldRotation);
+			mat4 translateView = mat4(
+				1.0,0.0,0.0,0.0,
+				0.0,1.0,0.0,0.0,
+				0.0,0.0,1.0,0.0,
+				-1.0*worldLoc.x,-1.0*worldLoc.y,-1.0*worldLoc.z,1.0
+			);
+
+			mat4 rotateX = mat4(1.0,0.0,0.0,0.0,
+								0.0,cw.x,sw.x,0.0,
+								0.0,-sw.x,cw.x,0.0,
+								0.0,0.0,0.0,1.0);
+			mat4 rotateY = mat4(cw.y,0.0,-sw.y,0.0,
+								0.0,1.0,0.0,0.0,
+								sw.y,0.0,cw.y,0.0,
+								0.0,0.0,0.0,1.0);
+			mat4 rotateZ = mat4(cw.z,sw.z,0.0,0.0,
+								-sw.z,cw.z,0.0,0.0,
+								0.0,0.0,1.0,0.0,
+								0.0,0.0,0.0,1.0);
+
+			return rotateY*translateView*pos;
+		}
+
+		vec4 ApplyProjection(vec4 pos) {
+			mat4 SimpleOrtho = mat4 (
+				1.0,0.0,0.0,0.0,
+				0.0,1.0,0.0,0.0,
+				0.0,0.0,1.0,0.0,
+				0.0,0.0,0.0,1.0
+			);
+
+			mat4 ComplexPerspective = mat4 (
+				n/r,0.0,0.0,0.0,
+				0.0,n/t,0.0,0.0,
+				0.0,0.0,1.0*(f+n)/(f-n),-1.0,
+				0.0,0.0,2.0*f*n/(f-n),0.0
+			);
+
+			// mat4 ComplexPerspective = mat4 (
+			// 	n/r,0.0,0.0,0.0,
+			// 	0.0,n/t,0.0,0.0,
+			// 	0.0,0.0,-1.0*(f+n)/(f-n),-1.0*f*n/(f-n),
+			// 	0.0,0.0,-1.0,0.0
+			// );
+
+			mat4 ComplexOrtho = mat4 (
+				1.0/r,0.0,0.0,0.0,
+				0.0,1.0/t,0.0,0.0,
+				0.0,0.0,0.3,0.0,
+				0.0,0.0,0.0,1.0
+			);
+
+			mat4 SimplePerspective = mat4 (
+				1.0,0.0,0.0,0.0,
+				0.0,1.0,0.0,0.0,
+				0.0,0.0,-1.0,-1.0,
+				0.0,0.0,-2.0,0.0
+			);
+
+			return ComplexPerspective * pos;
+		}
+
+		vec4 PositionObject(vec4 pos)
+		{
+			mat4 translateM = mat4(1.0,0.0,0.0,0.0,
+						   0.0,1.0,0.0,0.0,
+						   0.0,0.0,1.0,0.0,
+						   transform.x,transform.y,transform.z,1.0);
+			return translateM*pos;
+		}
+		//Use a function to Rotate the object
+		vec4 RotateObject(vec4 pos)
+		{
+			//This is a nice trick
+			vec3 c = cos(rotation);
+			vec3 s = sin(rotation);
+			fragColor = vert_color;
+			//Surprise!  we have to go column firt when we enter the matrix.
+
+			mat4 rotateX = mat4(1.0,0.0,0.0,0.0,
+								0.0,c.x,s.x,0.0,
+								0.0,-s.x,c.x,0.0,
+								0.0,0.0,0.0,1.0);
+			mat4 rotateY = mat4(c.y,0.0,-s.y,0.0,
+								0.0,1.0,0.0,0.0,
+								s.y,0.0,c.y,0.0,
+								0.0,0.0,0.0,1.0);
+			mat4 rotateZ = mat4(c.z,s.z,0.0,0.0,
+								-s.z,c.z,0.0,0.0,
+								0.0,0.0,1.0,0.0,
+								0.0,0.0,0.0,1.0);
+			return rotateZ*rotateY*rotateX*pos;
+		}
+		void main()
+		{
+			fragColor = vert_color;
+			vec4 worldCord = PositionObject(RotateObject(a_position));
+			vec4 cameraSpace = MoveCamera(worldCord);
+
+			gl_Position = ApplyProjection(cameraSpace);
+		}
+		</SCRIPT>
+		<script id="2dFragmentShader" type="notjs">
+		//Fragment shaders do not have precision so we have to set it.
+		precision mediump float;
+		varying vec3 fragColor;
+		void main()
+		{
+			//gl_FragColor = vec4(0,0,1,1); //Between 0 and 1.
+			gl_FragColor = vec4(fragColor,1);
+		}
+		</script>
+
+		<script src="webgl_interface.js"></script>
+		<script src="BasicGameObject.js"></script>
+		<script>
+		class main
+		{
+			constructor()
+			{
+			this.Visual = [];
+			this.Solid = [];
+			this.Trigger = [];
+			this.ObjectCounter = 0;
+			this.score = 0;
+
+			this.cameraRot = [0, 0, 0]
+			this.cameraLoc = [0, 0, -1]
+
+			this.myWEBGL = new WebGL_Interface();
+			//this.myTriangle = [];
+			this.Keys = [];
+			}
+
+			UpdateAll()
+			{
+
+				for(var i in this.Visual)
+				{
+					this.Visual[i].Update();
+				}
+				for(var i in this.Solid)
+				{
+					this.Solid[i].Update();
+				}
+				for(var i in this.Trigger)
+				{
+					this.Trigger[i].Update();
+				}
+
+				var worldLoc = gl.getUniformLocation(this.myWEBGL.program, 'worldLoc');
+				gl.uniform3fv(worldLoc, new Float32Array(this.player.loc));
+				var worldRot = gl.getUniformLocation(this.myWEBGL.program, 'worldRotation');
+				gl.uniform3fv(worldRot, new Float32Array(this.player.rot));
+
+				// var tempLoc = gl.getUniformLocation(this.myWEBGL.program, 'n');
+				// gl.uniform1f(tempLoc, parseFloat(document.getElementById("n").value));
+				// tempLoc = gl.getUniformLocation(this.myWEBGL.program, 'f');
+				// gl.uniform1f(tempLoc, parseFloat(document.getElementById("f").value));
+				// tempLoc = gl.getUniformLocation(this.myWEBGL.program, 'r');
+				// gl.uniform1f(tempLoc, parseFloat(document.getElementById("r").value));
+				// tempLoc = gl.getUniformLocation(this.myWEBGL.program, 't');
+				// gl.uniform1f(tempLoc, parseFloat(document.getElementById("t").value));
+			}
+
+			RenderAll()
+			{
+				for(var i in this.Visual)
+				{
+					this.Visual[i].Render(this.myWEBGL.program);
+				}
+				for(var i in this.Solid)
+				{
+					this.Solid[i].Render(this.myWEBGL.program);
+				}
+				for(var i in this.Trigger)
+				{
+					this.Trigger[i].Render(this.myWEBGL.program);
+				}
+
+			}
+			CheckCollision(loc1,rad1,loc2, rad2)
+			{
+				var dist = Math.sqrt(
+					Math.pow(loc1[0] - loc2[0], 2) +
+					Math.pow(loc1[1] - loc2[1], 2) +
+					Math.pow(loc1[2] - loc2[2], 2)
+				);
+				return dist < rad1 + rad2;
+			}
+
+			CreateObject(type, prefab, loc, rot)
+			{
+			//type 0 = visual
+			//type 1 = solid
+			//type 2 = trigger
+			var temp = new prefab; //Yes this dark sorcery will work.
+			var id = "ID"+this.ObjectCounter;
+			this.ObjectCounter ++;
+			temp.id = id;
+			temp.prefab = prefab;
+			temp.loc = loc;
+			temp.rot = rot;
+			temp.isTrigger = false;
+				switch(type)
+				{
+					case 0:
+						this.Visual[id] = temp;
+					break;
+					case 1:
+						this.Solid[id] = temp;
+					break;
+					case 2:
+						this.Trigger[id] = temp;
+						temp.isTrigger = true;
+					break;
+					default:
+					break;
+				}
+			//We can return the game object to the calling function
+			//Should the user want to set custom names or properties on it.
+			return temp;
+			}
+
+
+			DestroyObject(id)
+			{
+				if(id in this.Visual)
+				{
+					delete this.Visual[id];
+				}
+				if(id in this.Solid)
+				{
+					delete this.Solid[id];
+				}
+
+				if(id in this.Trigger)
+				{
+					delete this.Trigger[id];
+				}
+			}
+
+			KeyDown(event)
+			{
+				this.Keys[String.fromCharCode(event.keyCode)] = true;
+				//console.log(String.fromCharCode(event.keyCode) +" should be true - "+
+				//this.Keys[String.fromCharCode(event.keyCode)]);
+			}
+
+			KeyUp(event)
+			{
+				this.Keys[String.fromCharCode(event.keyCode)] = false;
+				//console.log(String.fromCharCode(event.keyCode) +" should be false - "+
+				//this.Keys[String.fromCharCode(event.keyCode)]);
+			}
+
+			MouseClick(event)
+			{
+				var rect = canvas.getBoundingClientRect();
+				var realX = event.clientX - rect.left;
+				var realY = event.clientY - rect.top;
+				console.log(realX+","+realY);
+				var x = -1 + 2*realX/myCanvas.width;
+				var y = -1 + 2*(myCanvas.height - realY)/myCanvas.height;
+				console.log("The click occurred on "+x+","+y);
+			}
+
+			IncrementScore() {
+				this.score++;
+				document.getElementById("score").innerHTML = "Community Service Quota: " + this.score + " / 200 objects destroyed";
+				if (this.score >= 200) {
+					document.getElementById("lore").innerHTML = `
+						<p>Congratulations, volunteer! You've done you part in lifting the United Space Directorate from this dark era of economic turmoil. Be sure to add this experience to your résumé - it will certainly impress employers.</p>
+						<p>Unfortunately, we are not currently able to provide transportation back to the surface. This shouldn't be a problem for an experienced pilot like you: have a safe landing!</p>
+						<p>Sincerely,</p>
+						<p>~ Your local USD provisioner</p>
+						`
+				}
+			}
+
+
+			//Static call backs go down here
+			//   |
+			//  \ /
+			//   v
+			static keyD(event)
+			{
+				m.KeyDown(event);
+			}
+			static keyU(event)
+			{
+				m.KeyUp(event);
+			}
+
+			static mouseH(event)
+			{
+				m.MouseClick(event);
+			}
+
+			static MainLoop()
+			{
+				m.UpdateAll();
+				m.RenderAll();
+				requestAnimationFrame(main.MainLoop);
+			}
+
+		}
+
+
+		</script>
+
+
+
+	</Head>
+	<BODY style="padding: 15px;">
+		<HEADER>
+
+		</HEADER>
+
+		<div id="lore">
+			<p>Welcome, volunteer! After Kessler Syndrome filled Earth's orbit with space junk, making spaceflight near impossible, the United Space Directorate needs brave volunteers like YOU to reopen our interplanetary trade routes!</p>
+			<p>You have been provided with a LSV-67 Space Cleanup Vehicle that has been thouroughly inspected for safety. Your tenure will end once a sufficient number of space objects have been 'dispersed' from your assigned orbital band.</p>
+			<p>This opportunity <i>is</i> unpaid, but doing your part in restoring interplanetary trade to the United Space Directorate is reward enough.</p>
+			<p>Godspeed, volunteer.</p>
+			<p>~ Your local USD provisioner</p>
+			<hr>
+			<p>Spacecraft Controls:</p>
+			<table style="border: 2px solid black;">
+				<tr>
+					<td style="border: 1px solid black;">W/S - Activate lateral thrusters</td>
+				</tr>
+				<tr>
+					<td style="border: 1px solid black;">A/D - Activate radial thrusters</td>
+				</tr>
+				<tr>
+					<td style="border: 1px solid black;">Z/X - Activate vertical thrusters</td>
+				</tr>
+				<tr>
+					<td style="border: 1px solid black;">Space - Activate hypervelocity particle dispersion cannon</td>
+				</tr>
+			</table>
+			<p>Scroll down to see spacecraft viewport.</p>
+			<p id="score">Community Service Quota: 0 / 200 objects destroyed</p>
+		</div>
+
+
+		<CANVAS id="myCanvas" width="500" height="500" style = "border: 1px solid #000;">
+			Your browser does not support canvas.
+		</CANVAS>
+
+		<!--These were debug inputs for tuning in the camera values-->
+		<!--<p>
+			<label for="n">n</label>
+			<input type="number" value="1" step="0.01" id="n">
+		</p>
+		<p>
+			<label for="f">f</label>
+			<input type="number" value="1" step="0.01" id="f">
+		</p>
+		<p>
+			<label for="r">r</label>
+			<input type="number" value="1" step="0.01" id="r">
+		</p>
+		<p>
+			<label for="t">t</label>
+			<input type="number" value="1" step="0.01" id="t">
+		</p>-->
+
+		<SCRIPT>
+			var canvas = document.getElementById("myCanvas");
+			var gl = canvas.getContext("webgl");
+			var m = new main();
+			window.onkeydown = main.keyD;
+			window.onkeyup = main.keyU;
+			canvas.addEventListener("click",main.mouseH);
+
+			requestAnimationFrame(main.MainLoop);
+
+			m.player = m.CreateObject(1,Player,[0,0,10],[0,0,0]);
+
+			// let asteroid = m.CreateObject(1,Asteroid,[0,0,1],[0,0,0]);
+			for (let i = 0; i < 200; i++) {
+				var loc = [
+					(Math.random() - 0.5) * 20,
+					(Math.random() - 0.5) * 20,
+					(Math.random() - 0.5) * 2,
+				]
+
+				let asteroid = m.CreateObject(1,Asteroid,loc,[0,0,0]);
+				asteroid.angVelocity[0] = (Math.random() - 0.5) * 0.1;
+				asteroid.angVelocity[1] = (Math.random() - 0.5) * 0.1;
+				asteroid.angVelocity[2] = (Math.random() - 0.5) * 0.1;
+			}
+
+		</SCRIPT>
+
+		<FOOTER>
+
+		</FOOTER>
+
+
+	</BODY>
+
+</HTML>
