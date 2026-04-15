@@ -1,0 +1,451 @@
+<!DOCTYPE HTML>
+<HTML lang="en">
+	<Head>
+	<Title>"Modularizing WebGL"</TITLE>
+
+		<!--
+		GLSL is the language used for shaders (GL Shader Language)
+
+		Attribute - you specify how to pull the data out of the buffers you supply.
+		Buffers - Data loaded onto the GPU (Normally vertex information)
+
+		Uniforms - global variables (in GLSL) that you set before you run the shader program
+
+		Textures - Textures are arrays of data you can randomly acces in your shader program.
+
+		Varying - are way for a vertex shader to pass data to the fragmentShader.
+		-->
+		<script id="2dVertexShader" type="notjs">
+		attribute vec4 a_position;
+		//We now want to read in Colors
+		attribute vec3 vert_color;
+		//However, we want to send the color to
+		//The fragment Shader
+		varying vec3 fragColor;
+
+		// This is used to let the player know the UFO is abducting them
+		uniform vec4 redFlash;
+		varying vec4 colorFilter;
+
+		uniform vec3 transform;
+		uniform vec3 rotation;
+
+		uniform vec3 worldLoc;
+		uniform vec3 worldRotation;
+		uniform float n;
+		uniform float f;
+		uniform float r;
+		uniform float t;
+
+		attribute vec3 vert_normal;
+		uniform vec3 spotlightLoc;
+
+		varying vec3 fakenormal;
+		varying vec3 v_surfaceToLight[5];
+		varying vec3 v_surfaceToView;
+		varying vec3 v_spot_surfaceToLight;
+
+		vec4 MoveCamera(vec4 pos)
+		{
+			vec3 cw = cos(worldRotation);
+			vec3 sw = sin(worldRotation);
+			mat4 translateView = mat4(1.0,0.0,0.0,0.0,
+									  0.0,1.0,0.0,0.0,
+									  0.0,0.0,1.0,0.0,
+									  -1.0*worldLoc.x,-1.0*worldLoc.y,-1.0*worldLoc.z,1.0
+									);
+
+			mat4 rotateView = mat4(cw.y,0.0,-1.0*sw.y,0.0,
+									0.0,1.0,0.0,0.0,
+									sw.y,0.0,cw.y,0.0,
+									0.0,0.0,0.0,1.0);
+			return rotateView*translateView*pos;
+		}
+
+		vec4 ApplyProjection(vec4 pos)
+		{
+			mat4 SimpleOrtho = mat4  (1,0.0,0.0,0.0,
+							 0.0,1,0.0,0.0,
+							 0.0,0.0,1,0.0,
+							 0.0,0.0,0.0,1.0);
+
+			mat4 ComplexPerspective = mat4(
+										n/r, 0.0,0.0,0.0,
+										0.0, n/t,0.0,0.0,
+										0.0,0.0,-1.0*(f+n)/(f-n),-1.0,
+										0.0,0.0,-2.0*f*n/(f-n),0.0
+										);
+			mat4 ComplexOrtho = mat4(	1.0/r,0.0,0.0,0.0,
+										0.0,1.0/t,0.0,0.0,	//If I make the y -1.0/t I will invert the Y-axis.
+										0.0,0.0,1.0,0.0,
+										0.0,0.0,0.0,1.0	//If I make the x and y translate -1, -1 I can put 0,0 in the bottom right.
+									);
+
+			mat4 SimplePerspective = 	mat4(
+								1.0,0.0,0.0,0.0,
+								0.0,1.0,0.0,0.0,
+								0.0,0.0,-1.0,-1.0,
+								0.0,0.0,-2.0,0.0
+								);
+			return ComplexPerspective*pos;
+		}
+
+		vec4 PositionObject(vec4 pos)
+		{
+			mat4 translateM = mat4(1.0,0.0,0.0,0.0,
+						   0.0,1.0,0.0,0.0,
+						   0.0,0.0,1.0,0.0,
+						   transform.x,transform.y,transform.z,1.0);
+			return translateM*pos;
+		}
+		//Use a function to Rotate the object
+		vec4 RotateObject(vec4 pos)
+		{
+			//This is a nice trick
+			vec3 c = cos(rotation);
+			vec3 s = sin(rotation);
+			fragColor = vert_color;
+			//Surprise!  we have to go column firt when we enter the matrix.
+
+			//mat4 rotateX = mat4();
+			mat4 rotateY = mat4(c.y,0.0,-1.0*s.y,0.0,
+								0.0,1.0,0.0,0.0,
+								s.y,0.0,c.y,0.0,
+								0.0,0.0,0.0,1.0);
+			//mat4 rotateZ = mat4();
+			return rotateY*pos;
+		}
+		void main()
+		{
+			// fakenormal = vert_normal;
+			if (length(a_position) < 5.0) {
+				// fakenormal = RotateObject(a_position).xyz;
+				fakenormal = RotateObject(vec4(vert_normal, 0)).xyz;
+			}
+			else {
+				fakenormal = vec3(0.0,1.0,0.0);
+			}
+			vec4 worldSpace = PositionObject(RotateObject(a_position));
+
+			v_surfaceToLight[0] = vec3(0.0,2.0,30.0) - worldSpace.xyz;
+			v_surfaceToLight[1] = vec3(-40.0,2.0,40.0) - worldSpace.xyz;
+			v_surfaceToLight[2] = vec3(30.0,2.0,30.0) - worldSpace.xyz;
+			v_surfaceToLight[3] = vec3(-40.0,2.0,-40.0) - worldSpace.xyz;
+			v_surfaceToLight[4] = vec3(30.0,2.0,-30.0) - worldSpace.xyz;
+
+			v_surfaceToView = worldLoc - worldSpace.xyz;
+			v_spot_surfaceToLight = spotlightLoc - worldSpace.xyz;
+			fragColor = vert_color;
+			vec4 cameraSpace = MoveCamera(worldSpace);
+			gl_Position=ApplyProjection(cameraSpace);
+
+			colorFilter = redFlash;
+		}
+		</SCRIPT>
+		<script id="2dFragmentShader" type="notjs">
+		//Fragment shaders do not have precision so we have to set it.
+		precision mediump float;
+		varying vec4 colorFilter;
+
+		varying vec3 fragColor;
+		varying vec3 fakenormal;
+		varying vec3 v_surfaceToLight[5];
+		varying vec3 v_surfaceToView;
+		varying vec3 v_spot_surfaceToLight;
+		void main()
+		{
+			//gl_FragColor = vec4(0,0,1,1); //Between 0 and 1.
+			float ambient = .1;
+
+			gl_FragColor = vec4(ambient*fragColor,1);
+
+			float d_light = dot(normalize(fakenormal),normalize(vec3(20.0,5.0,20.0))) * 0.25;
+			if (d_light < 0.0) {d_light = 0.0;}
+			float p_light = 0.0;
+			float p_light_blue = 0.0;
+			for (int i = 0; i < 5; i++) {
+				float p_light_part = dot(normalize(fakenormal),normalize(v_surfaceToLight[i]))*2.0/length(v_surfaceToLight[i]);
+				if (p_light_part < 0.0) {p_light_part = 0.0;}
+				if (i == 4) {
+					p_light_blue += p_light_part;
+				}
+				else {
+					p_light += p_light_part;
+				}
+			}
+
+			float spot_light_power;
+			float spot_light = dot(normalize(v_spot_surfaceToLight), vec3(0,1,0));
+			if (spot_light >= .98) {
+				spot_light_power = dot(normalize(fakenormal),normalize(v_spot_surfaceToLight)) * 0.5;
+				if (spot_light_power < 0.0) {
+					spot_light_power = 0.0;
+				}
+			}
+			// gl_FragColor = vec4(fragColor*(spot_light_power),1);
+			float lightIntensity = p_light + ambient + d_light + spot_light_power;
+			gl_FragColor = vec4(fragColor*(vec3(lightIntensity, lightIntensity, lightIntensity + p_light_blue * 1.5)), 1) + colorFilter;
+		}
+		</script>
+
+		<script src="webgl_interface.js"></script>
+		<script src="obj_parser.js"></script>
+		<script src="obj_files.js"></script>
+		<script src="BasicGameObject.js"></script>
+		<script>
+		class main
+		{
+			constructor()
+			{
+				this.Visual = [];
+				this.Solid = [];
+				this.Trigger = [];
+				this.ObjectCounter = 0;
+
+				this.myWEBGL = new WebGL_Interface();
+				this.myTriangle = [];
+				this.Keys = [];
+
+				this.glorch = 0;
+				this.hasWon = false;
+			}
+
+			UpdateAll()
+			{
+				for(var i in this.Visual)
+				{
+					this.Visual[i].Update();
+				}
+				for(var i in this.Solid)
+				{
+					this.Solid[i].Update();
+				}
+				for(var i in this.Trigger)
+				{
+					this.Trigger[i].Update();
+				}
+			}
+
+			RenderAll()
+			{
+				this.glorch = document.getElementById("glorch").value
+				gl.clear(gl.COLOR_BUFFER_BIT);
+				for(var i in this.Visual)
+				{
+					this.Visual[i].Render(this.myWEBGL.program);
+				}
+				for(var i in this.Solid)
+				{
+					this.Solid[i].Render(this.myWEBGL.program);
+				}
+				for(var i in this.Trigger)
+				{
+					this.Trigger[i].Render(this.myWEBGL.program);
+				}
+			}
+
+			CheckCollision(loc1,rad1,loc2, rad2)
+			{
+				var dist = Math.sqrt(
+					Math.pow(loc1[0] - loc2[0], 2) +
+					// Math.pow(loc1[1] - loc2[1], 2) + // Y is excluded since the game takes place on a flat plane
+					Math.pow(loc1[2] - loc2[2], 2)
+				);
+				return dist < rad1 + rad2;
+			}
+
+			CreateObject(type, prefab, loc, rot)
+			{
+				//type 0 = visual
+				//type 1 = solid
+				//type 2 = trigger
+				var temp = new prefab; //Yes this dark sorcery will work.
+				var id = "ID"+this.ObjectCounter;
+				this.ObjectCounter ++;
+				temp.id = id;
+				temp.prefab = prefab;
+				temp.loc = loc;
+				temp.rot = rot;
+				switch(type)
+				{
+					case 0:
+						this.Visual[id] = temp;
+						break;
+					case 1:
+						this.Solid[id] = temp;
+						break;
+					case 2:
+						this.Trigger[id] = temp;
+						temp.isTrigger = true;
+						break;
+					default:
+						break;
+				}
+				//We can return the game object to the calling function
+				//Should the user want to set custom names or properties on it.
+				return temp;
+			}
+
+			DestroyObject(id)
+			{
+				if(id in this.Visual)
+				{
+					delete this.Visual[id];
+				}
+				if(id in this.Solid)
+				{
+					delete this.Solid[id];
+				}
+				if(id in this.Trigger)
+				{
+					delete this.Trigger[id];
+				}
+			}
+
+			KeyDown(event)
+			{
+				this.Keys[String.fromCharCode(event.keyCode)] = true;
+				console.log(String.fromCharCode(event.keyCode) +" should be true - "+this.Keys[String.fromCharCode(event.keyCode)]);
+			}
+
+			KeyUp(event)
+			{
+				this.Keys[String.fromCharCode(event.keyCode)] = false;
+				console.log(String.fromCharCode(event.keyCode) +" should be false - "+this.Keys[String.fromCharCode(event.keyCode)]);
+			}
+
+			MouseClick(event)
+			{
+				var rect = canvas.getBoundingClientRect();
+				var realX = event.clientX - rect.left;
+				var realY = event.clientY - rect.top;
+				console.log(realX+","+realY);
+				var x = -1 + 2*realX/myCanvas.width;
+				var y = -1 + 2*(myCanvas.height - realY)/myCanvas.height;
+				console.log("The click occurred on "+x+","+y);
+			}
+
+			Win() {
+				document.getElementById("title").innerHTML = "WOW YOU [Little Sponge] YOU DID IT!!!"
+				document.getElementById("text1").innerHTML = "~~~ USE WASD 2 [[Move your ass]] OR [shimmy] WITH Q/E ~~~"
+				document.getElementById("text2").innerHTML = "THERE ARE 5 100% [Blindness] GUARANTEED LAMPS IN THE. FIND THE [[Bluelight Specil]] TO [[W1N]] BIG!"
+				document.getElementById("text3").innerHTML = "THEY ARE [Coming]. THEY ARE [Coming]. I CAN'T [hide]"
+				document.getElementById("glorchUnlock").style = "display: block;"
+				document.getElementById("spamton1").style = "display: inline;"
+				document.getElementById("spamton2").style = "display: inline;"
+
+				this.hasWon = true;
+			}
+
+			//Static call backs go down here
+			//   |
+			//  \ /
+			//   v
+			static keyD(event)
+			{
+				m.KeyDown(event);
+			}
+			static keyU(event)
+			{
+				m.KeyUp(event);
+			}
+
+			static mouseH(event)
+			{
+				m.MouseClick(event);
+			}
+
+			static MainLoop()
+			{
+				m.UpdateAll();
+				m.RenderAll();
+				requestAnimationFrame(main.MainLoop);
+			}
+
+		}
+
+
+		</script>
+
+
+
+	</Head>
+	<BODY style="padding: 15px; text-align: center; background-image: url('stars.png'); color: white;">
+		<h1 id="title">
+			SPOOKY FOREST GAME
+		</h1>
+		<p id="text1">~~~ Use WASD to navigate, Q/E to strafe ~~~</p>
+
+		<img id="spamton1" src="https://media1.tenor.com/m/VKtdJknsMycAAAAC/spamton-deltarune.gif" style="display: none;">
+		<CANVAS id="myCanvas" width="640" height="400" style = "border: 1px solid #000;">
+			Your browser does not support canvas.
+		</CANVAS>
+		<img id="spamton2" src="https://media1.tenor.com/m/VKtdJknsMycAAAAC/spamton-deltarune.gif" style="display: none;">
+		<div id="glorchUnlock" style="display: none;">
+			<input type="range" id="glorch" name="glorch" min="0" max="1" value="0" step="0.01" />
+			<label for="glorch">Glorch Factor</label>
+		</div>
+		<p id="text2">There are 5 lamps in the forest. Find the blue light to win!</p>
+		<p id="text3">Avoid getting caught by the UFO, or you'll be sent back to the start.</p>
+
+		<SCRIPT>
+			var canvas = document.getElementById("myCanvas");
+			var gl = canvas.getContext("webgl");
+			var m = new main();
+			window.onkeydown = main.keyD;
+			window.onkeyup = main.keyU;
+			canvas.addEventListener("click",main.mouseH);
+
+			m.CreateObject(1,Camera,[0,0,60],[0,0,0]);
+
+			// Propagate junk about the landscape
+			for (var i = 0; i <= 300; i++) {
+				var loc = [
+					(Math.random() - 0.5) * 100,
+					-0.5,
+					(Math.random() - 0.5) * 100,
+				]
+
+				var rot = [
+					0,
+					Math.random() * Math.PI * 2,
+					0,
+				]
+
+				// Prevent the player from spawning inside solid objects
+				// if (Math.abs(loc[0]) < 3 || Math.abs(loc[2]) < 3) {
+				// 	continue
+				// }
+
+				if (Math.random() > 0.5) {
+					m.CreateObject(1, Tree, loc, rot);
+				}
+				else {
+					m.CreateObject(1, Rock, loc, rot);
+				}
+			}
+
+			m.CreateObject(2,Light,[0,-0.5,30],[0,0,0]);
+			m.CreateObject(2,Light,[-40,-0.5,40],[0,0,0]);
+			m.CreateObject(2,Light,[30,-0.5,30],[0,0,0]);
+			m.CreateObject(2,Light,[-40,-0.5,-40],[0,0,0]);
+			m.CreateObject(2,Light,[30,-0.5,-30],[0,0,0]).winner = true;
+
+			m.CreateObject(2,Ground,[0,-.5,0],[0,0,0]);
+			m.CreateObject(2,Enemy,[0,10,-30],[0,0,0]);
+			m.CreateObject(2,Moon,[200,80,0],[0,0,0]);
+
+			requestAnimationFrame(main.MainLoop);
+
+
+
+		</SCRIPT>
+
+		<FOOTER>
+
+		</FOOTER>
+
+
+	</BODY>
+
+</HTML>
